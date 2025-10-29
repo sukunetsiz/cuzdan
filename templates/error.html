@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Monero Wallet Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='cuzdan.png') }}">
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="min-h-screen p-4 md:p-8">
+        <div class="max-w-4xl mx-auto bg-gray-800 rounded-lg p-8 border border-gray-700">
+            <div class="text-center mb-8">
+                <h1 class="text-red-400 text-4xl font-light">Connection Error</h1>
+            </div>
+            <div class="bg-red-900 bg-opacity-20 border-l-4 border-red-600 text-red-100 p-6 rounded-lg mb-8">
+                <p class="text-lg">{{ error }}</p>
+            </div>
+            <div class="text-center">
+                <button class="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded font-medium transition-colors" onclick="location.reload()">Retry Connection</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

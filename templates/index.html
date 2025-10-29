@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monero Wallet Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='cuzdan.png') }}">
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <!-- Top anchor for scroll-to-top functionality -->
+    <div id="top"></div>
+    
+    <!-- Scroll buttons on the left side -->
+    <a href="#top" class="fixed top-1/2 left-5 transform -translate-y-1/2 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to top">▲</a>
+    <a href="#bottom" class="fixed top-1/2 left-5 transform translate-y-12 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to bottom">▼</a>
+    
+    <!-- Scroll buttons on the right side -->
+    <a href="#top" class="fixed top-1/2 right-5 transform -translate-y-1/2 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to top">▲</a>
+    <a href="#bottom" class="fixed top-1/2 right-5 transform translate-y-12 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to bottom">▼</a>
+
+    <div class="min-h-screen p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-6">
+                        {% for category, message in messages %}
+                            <div class="{% if category == 'error' %}bg-red-900 bg-opacity-20 border-l-4 border-red-600 text-red-100{% else %}bg-green-900 bg-opacity-20 border-l-4 border-green-600 text-green-100{% endif %} p-4 mb-4">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Balance Card -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h2 class="text-xl font-medium text-gray-300 mb-2">Current Balance</h2>
+                        <div class="text-3xl font-light text-white">{{ balance }} XMR</div>
+                    </div>
+                    <div class="mt-4 md:mt-0 text-center">
+                        <div class="text-sm text-gray-400 mb-1">Total Addresses</div>
+                        <div class="text-2xl font-light text-white">{{ all_addresses|length }}</div>
+                    </div>
+                </div>
+                <div class="mt-6 p-4 bg-gray-700 rounded border border-gray-600">
+                    <div class="text-sm text-gray-400 mb-1">Primary Address</div>
+                    <div class="font-mono text-sm text-gray-300 break-all">{{ primary_address }}</div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap justify-center gap-4 mb-8">
+                <form action="{{ url_for('new_address') }}" method="POST" class="inline-block">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition-colors">
+                        Generate New Address
+                    </button>
+                </form>
+                <a href="{{ url_for('index') }}" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded transition-colors inline-block">
+                    Refresh Wallet
+                </a>
+            </div>
+
+            <!-- Send Transaction -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+                <h2 class="text-xl font-medium text-gray-300 mb-4 text-center">Send Transaction</h2>
+                <form action="{{ url_for('send_transaction') }}" method="POST">
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Recipient Address</label>
+                            <input type="text" name="address" placeholder="Enter Monero address..." 
+                                   class="w-full bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none font-mono text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Amount (XMR)</label>
+                            <input type="number" name="amount" placeholder="0.000000000000" step="0.000000000001" min="0"
+                                   class="w-full bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors">
+                            Send Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Transaction Sections -->
+            <div class="space-y-6">
+                <!-- Incoming Transactions -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700">
+                    <button onclick="toggleSection('incoming')" class="w-full p-4 text-left flex justify-between items-center rounded-t-lg">
+                        <span class="text-lg font-medium text-gray-300">Incoming Transactions</span>
+                        <span id="incoming-arrow" class="transform transition-transform text-gray-400">▼</span>
+                    </button>
+                    <div id="incoming-content" class="hidden p-4 pt-0">
+                        {% if incoming_transactions %}
+                            <div class="space-y-4">
+                                {% for tx in incoming_transactions %}
+                                    <div class="bg-gray-700 p-4 rounded border-l-4 {% if tx.status_class == 'unconfirmed' %}border-red-600{% elif tx.status_class == 'confirming' %}border-yellow-600{% else %}border-green-600{% endif %}">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div class="text-lg font-light text-white">{{ tx.amount }} XMR</div>
+                                            <div class="text-sm {% if tx.status_class == 'unconfirmed' %}text-red-400{% elif tx.status_class == 'confirming' %}text-yellow-400{% else %}text-green-400{% endif %}">{{ tx.status }}</div>
+                                        </div>
+                                        <div class="text-sm text-gray-400 mb-2">
+                                            <span class="font-medium">Received at:</span> 
+                                            <span class="font-mono break-all">{{ tx.address }}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            <span class="font-medium">TX:</span> 
+                                            <span class="font-mono break-all">{{ tx.txid }}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            Height: {{ tx.height or 'Mempool' }} | Confirmations: {{ tx.confirmations }}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-8 text-gray-500">
+                                No incoming transactions found
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Outgoing Transactions -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700">
+                    <button onclick="toggleSection('outgoing')" class="w-full p-4 text-left flex justify-between items-center rounded-t-lg">
+                        <span class="text-lg font-medium text-gray-300">Outgoing Transactions</span>
+                        <span id="outgoing-arrow" class="transform transition-transform text-gray-400">▼</span>
+                    </button>
+                    <div id="outgoing-content" class="hidden p-4 pt-0">
+                        {% if outgoing_transactions %}
+                            <div class="space-y-4">
+                                {% for tx in outgoing_transactions %}
+                                    <div class="bg-gray-700 p-4 rounded border-l-4 {% if tx.status_class == 'unconfirmed' %}border-red-600{% elif tx.status_class == 'confirming' %}border-yellow-600{% else %}border-green-600{% endif %}">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div class="text-lg font-light text-white">{{ tx.amount }} XMR</div>
+                                            <div class="text-sm {% if tx.status_class == 'unconfirmed' %}text-red-400{% elif tx.status_class == 'confirming' %}text-yellow-400{% else %}text-green-400{% endif %}">{{ tx.status }}</div>
+                                        </div>
+                                        <div class="text-sm text-gray-400 mb-2">
+                                            <span class="font-medium">Sent from:</span> 
+                                            <span class="font-mono break-all">{{ tx.address }}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mb-1">
+                                            <span class="font-medium">TX:</span> 
+                                            <span class="font-mono break-all">{{ tx.txid }}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            Height: {{ tx.height or 'Mempool' }} | Confirmations: {{ tx.confirmations }} | Fee: {{ tx.fee }} XMR
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-8 text-gray-500">
+                                No outgoing transactions found
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- All Addresses -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700">
+                    <button onclick="toggleSection('addresses')" class="w-full p-4 text-left flex justify-between items-center rounded-t-lg">
+                        <span class="text-lg font-medium text-gray-300">All Addresses ({{ all_addresses|length }})</span>
+                        <span id="addresses-arrow" class="transform transition-transform text-gray-400">▼</span>
+                    </button>
+                    <div id="addresses-content" class="hidden p-4 pt-0">
+                        <div class="space-y-4">
+                            {% for address in all_addresses %}
+                                <div class="bg-gray-700 p-4 rounded border-l-4 {% if loop.index0 == 0 %}border-blue-600{% else %}border-gray-600{% endif %}">
+                                    <div class="text-sm font-medium text-gray-400 mb-2">
+                                        {% if loop.index0 == 0 %}Primary Address{% else %}Subaddress {{ loop.index0 }}{% endif %}
+                                    </div>
+                                    <div class="font-mono text-sm text-gray-300 break-all">{{ address }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom anchor for scroll-to-bottom functionality -->
+    <div id="bottom"></div>
+    
+    <script>
+        // Minimal JavaScript for UI interactions
+        function toggleSection(section) {
+            const content = document.getElementById(`${section}-content`);
+            const arrow = document.getElementById(`${section}-arrow`);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+</body>
+</html>
