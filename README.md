@@ -1,6 +1,14 @@
-# Monero Wallet Manager
+<div align="center">
+
+# Monero Wallet RPC Web Interface
+
+<img src="static/cuzdan.png" alt="Cuzdan Logo" width="200"/>
 
 A Flask-based web interface for managing Monero wallets with multi-address support, transaction history, and XMR sending capabilities.
+
+</div>
+
+---
 
 ## Quick Start
 ```bash
@@ -22,6 +30,8 @@ python app.py
 ```
 
 Access the wallet at: http://localhost:5000
+
+---
 
 ## Starting the Wallet RPC Server
 
@@ -45,6 +55,8 @@ If you need to use a different Monero node, you can find a list of available nod
 
 Simply replace the `--daemon-host` parameter with your chosen node address.
 
+---
+
 ## Configuration
 
 All configuration is done through the `.env` file:
@@ -61,12 +73,16 @@ FLASK_PORT=5000
 FLASK_DEBUG=True
 ```
 
+---
+
 ## Features
 
 - **Multi-Address Management**: Primary address + subaddresses with generation
 - **Transaction History**: Separate incoming/outgoing transaction views
 - **Send XMR**: Built-in transaction sending with balance validation
 - **Responsive Design**: Clean dark theme
+
+---
 
 ## Dependencies
 
