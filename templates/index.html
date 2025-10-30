@@ -6,6 +6,7 @@
     <title>Monero Wallet Manager</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='cuzdan.png') }}">
+    <script src="{{ url_for('static', filename='js/html5-qrcode.min.js') }}"></script>
 </head>
 <body class="bg-gray-900 text-gray-100">
     <!-- Top anchor for scroll-to-top functionality -->
@@ -18,6 +19,24 @@
     <!-- Scroll buttons on the right side -->
     <a href="#top" class="fixed top-1/2 right-5 transform -translate-y-1/2 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to top">▲</a>
     <a href="#bottom" class="fixed top-1/2 right-5 transform translate-y-12 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to bottom">▼</a>
+
+    <!-- QR Scanner Modal -->
+    <div id="qr-scanner-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-lg w-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-medium text-gray-300">Scan QR Code</h3>
+                    <button onclick="closeQRScanner()" class="text-gray-400 hover:text-gray-200">
+                        <img src="{{ url_for('static', filename='icons/close.png') }}" alt="Close" class="w-6 h-6 filter brightness-0 invert">
+                    </button>
+                </div>
+                <div id="qr-reader" class="mb-4"></div>
+                <div class="text-center text-sm text-gray-400">
+                    Position the QR code within the frame to scan
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="min-h-screen p-4 md:p-8">
         <div class="max-w-6xl mx-auto">
@@ -91,12 +110,17 @@
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-400 mb-2">Recipient Address</label>
-                            <input type="text" name="address" placeholder="Enter Monero address..." 
-                                   class="w-full bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none font-mono text-sm">
+                            <div class="flex gap-2">
+                                <input type="text" name="address" id="recipient-address" placeholder="Enter Monero address..." 
+                                       class="flex-1 bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none font-mono text-sm">
+                                <button type="button" onclick="openQRScanner()" class="bg-gray-700 hover:bg-gray-600 text-white p-3 rounded transition-colors" title="Scan QR Code">
+                                    <img src="{{ url_for('static', filename='icons/qr.png') }}" alt="QR" class="w-6 h-6 filter brightness-0 invert">
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-400 mb-2">Amount (XMR)</label>
-                            <input type="number" name="amount" placeholder="0.000000000000" step="0.000000000001" min="0"
+                            <input type="number" name="amount" id="send-amount" placeholder="0.000000000000" step="0.000000000001" min="0"
                                    class="w-full bg-gray-700 text-white p-3 rounded border border-gray-600 focus:border-blue-500 focus:outline-none">
                             <div class="text-xs text-gray-400 mt-1">Available: {{ unlocked_balance }} XMR</div>
                         </div>
@@ -231,7 +255,6 @@
     <div id="bottom"></div>
     
     <script>
-        // Minimal JavaScript for UI interactions
         function toggleSection(section) {
             const content = document.getElementById(`${section}-content`);
             const arrow = document.getElementById(`${section}-arrow`);
@@ -264,6 +287,138 @@
                 button.classList.remove('bg-green-600');
             }, 2000);
         }
+        
+        let html5QrCode;
+        
+        function openQRScanner() {
+            document.getElementById('qr-scanner-modal').classList.remove('hidden');
+            
+            html5QrCode = new Html5Qrcode("qr-reader");
+            
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    const cameraId = devices[0].id;
+                    
+                    html5QrCode.start(
+                        cameraId,
+                        {
+                            fps: 10,
+                            qrbox: { width: 250, height: 250 }
+                        },
+                        (decodedText, decodedResult) => {
+                            // QR code scanned successfully
+                            handleQRCodeScan(decodedText);
+                        },
+                        (errorMessage) => {
+                            // Handle scan error silently
+                        }
+                    ).catch((err) => {
+                        console.error(`Unable to start scanning: ${err}`);
+                        alert('Unable to access camera. Please ensure you have granted camera permissions.');
+                        closeQRScanner();
+                    });
+                }
+            }).catch(err => {
+                console.error(`Error getting cameras: ${err}`);
+                alert('Unable to access camera. Please ensure you have granted camera permissions.');
+                closeQRScanner();
+            });
+        }
+        
+        function closeQRScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch((err) => {
+                    console.error(`Failed to stop scanning: ${err}`);
+                });
+            }
+            document.getElementById('qr-scanner-modal').classList.add('hidden');
+        }
+        
+        function handleQRCodeScan(decodedText) {
+            try {
+                console.log('QR Code scanned:', decodedText); // Debug log
+                
+                // Parse Monero URI format
+                let address = decodedText;
+                let amount = '';
+                
+                if (decodedText.startsWith('monero:')) {
+                    // Handle various Monero URI formats
+                    // Format examples:
+                    // monero:address?amount=0.123
+                    // monero:address?tx_amount=0.123
+                    // monero:address?tx_amount=0.123&payment_id=xyz
+                    
+                    try {
+                        const url = new URL(decodedText);
+                        address = url.pathname;
+                        
+                        // Try different parameter names for amount
+                        amount = url.searchParams.get('amount') || 
+                                url.searchParams.get('tx_amount') || 
+                                url.searchParams.get('tx_amount') || '';
+                        
+                        console.log('Parsed address:', address); // Debug log
+                        console.log('Parsed amount:', amount); // Debug log
+                    } catch (urlError) {
+                        // Fallback for malformed URLs
+                        console.error('URL parsing error:', urlError);
+                        // Try manual parsing
+                        const parts = decodedText.split('?');
+                        if (parts.length > 1) {
+                            address = parts[0].replace('monero:', '');
+                            const params = parts[1];
+                            const amountMatch = params.match(/(?:amount|tx_amount)=([^&]+)/);
+                            if (amountMatch) {
+                                amount = amountMatch[1];
+                            }
+                        }
+                    }
+                }
+                
+                // Fill the form fields
+                document.getElementById('recipient-address').value = address;
+                if (amount && amount !== '') {
+                    document.getElementById('send-amount').value = amount;
+                    console.log('Amount field set to:', amount); // Debug log
+                }
+                
+                // Close the scanner
+                closeQRScanner();
+                
+                // Show success message
+                showFlashMessage('QR code scanned successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error parsing QR code:', error);
+                showFlashMessage('Invalid QR code format', 'error');
+                closeQRScanner();
+            }
+        }
+        
+        function showFlashMessage(message, type) {
+            const flashDiv = document.createElement('div');
+            flashDiv.className = type === 'error' 
+                ? 'bg-red-900 bg-opacity-20 border-l-4 border-red-600 text-red-100 p-4 mb-4'
+                : 'bg-green-900 bg-opacity-20 border-l-4 border-green-600 text-green-100 p-4 mb-4';
+            flashDiv.textContent = message;
+            
+            const flashContainer = document.querySelector('.max-w-6xl');
+            flashContainer.insertBefore(flashDiv, flashContainer.firstChild);
+            
+            setTimeout(() => {
+                flashDiv.remove();
+            }, 5000);
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('qr-scanner-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRScanner();
+            }
+        });
     </script>
 </body>
 </html>

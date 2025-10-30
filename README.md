@@ -4,7 +4,7 @@
 
 <img src="static/cuzdan.png" alt="Cuzdan Logo" width="200"/>
 
-A Flask-based web interface for managing Monero wallets with multi-address support, transaction history, XMR sending capabilities, and QR code generation.
+A Flask-based web interface for managing Monero wallets with multi-address support, transaction history, XMR sending capabilities, QR code generation and QR code scanning.
 
 </div>
 
@@ -78,10 +78,28 @@ FLASK_DEBUG=True
 ## Features
 
 - **Multi-Address Management**: Primary address + subaddresses with generation
-- **Transaction History**: Separate incoming/outgoing transaction views
+- **Balance Display**: Shows both total balance and unlocked balance (available after 10 confirmations)
+- **Transaction History**: Separate incoming/outgoing transaction views with confirmation status
 - **Send XMR**: Built-in transaction sending with balance validation
 - **QR Code Generation**: Automatic QR code for the latest subaddress for easy receiving
-- **Responsive Design**: Clean dark theme
+- **QR Code Scanning**: Scan QR codes to automatically fill recipient address and amount
+- **Responsive Design**: Clean, professional dark theme
+- **Fully Local**: No external dependencies - everything runs locally
+
+---
+
+## QR Code Features
+
+### Receiving Payments
+
+- Automatically generates a QR code for your latest subaddress
+- Includes a copy button for the address
+
+### Sending Payments
+
+- Click the QR icon next to the address field to open the scanner
+- Supports Monero URI format
+- Automatically fills both address and amount fields
 
 ---
 
@@ -93,4 +111,3 @@ FLASK_DEBUG=True
 - python-dotenv 1.0.0
 - qrcode 7.4.2
 - Pillow 10.0.1
-
