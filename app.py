@@ -8,25 +8,25 @@ import qrcode
 import io
 import base64
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
 logging.basicConfig(level=logging.INFO)
 
-# Configure your wallet connection from environment variables
+# Wallet RPC configuration
 WALLET_HOST = os.environ['WALLET_HOST']
 WALLET_PORT = int(os.environ['WALLET_PORT'])
 WALLET_PASSWORD = os.environ['WALLET_PASSWORD']
 
-# Flask app configuration from environment variables
+# Flask server configuration
 FLASK_HOST = os.environ['FLASK_HOST']
 FLASK_PORT = int(os.environ['FLASK_PORT'])
 FLASK_DEBUG = os.environ['FLASK_DEBUG'].lower() == 'true'
 
 def get_wallet():
-    """Get wallet instance with error handling"""
+    """Establish connection to Monero wallet RPC"""
     try:
         backend = JSONRPCWallet(host=WALLET_HOST, port=WALLET_PORT)
         wallet = Wallet(backend)
@@ -36,7 +36,7 @@ def get_wallet():
         return None
 
 def generate_qr_code(address):
-    """Generate a QR code for the given address and return it as base64"""
+    """Generate QR code for address and return as base64 string"""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -48,7 +48,7 @@ def generate_qr_code(address):
     
     img = qr.make_image(fill_color="white", back_color="black")
     
-    # Convert image to base64 string
+    # Convert image to base64 for HTML embedding
     img_io = io.BytesIO()
     img.save(img_io, 'PNG')
     img_io.seek(0)
@@ -57,33 +57,30 @@ def generate_qr_code(address):
     return img_base64
 
 def get_wallet_data():
-    """Get all wallet data for rendering"""
+    """Retrieve wallet addresses, balances, and transaction history"""
     wallet = get_wallet()
     if not wallet:
         return None
     
     try:
-        # Get the primary address
+        # Get primary and all subaddresses
         primary_address = wallet.address()
-        
-        # Get all addresses in the first account
         addresses = wallet.addresses()
-        
-        # Get the latest subaddress (last in the list)
         latest_address = addresses[-1] if addresses else primary_address
         
-        # Generate QR code for the latest address
+        # Generate QR code for latest address
         latest_address_qr = generate_qr_code(str(latest_address))
         
-        # Get wallet balances (both total and unlocked)
+        # Get wallet balances
         total_balance, unlocked_balance = wallet.balances()
         
-        # Get incoming transactions
+        # Process incoming transactions
         incoming = wallet.incoming(unconfirmed=True)
         incoming_transactions = []
         for payment in incoming:
             confirmations = wallet.confirmations(payment)
             
+            # Determine transaction status based on confirmations
             if confirmations == 0:
                 status = "Unconfirmed"
                 status_class = "unconfirmed"
@@ -104,7 +101,7 @@ def get_wallet_data():
                 'status_class': status_class
             })
         
-        # Get outgoing transactions
+        # Process outgoing transactions
         outgoing = wallet.outgoing(unconfirmed=True)
         outgoing_transactions = []
         for payment in outgoing:
@@ -147,7 +144,7 @@ def get_wallet_data():
 
 @app.route('/')
 def index():
-    """Main page showing current wallet address and all data"""
+    """Display main page with wallet information"""
     wallet_data = get_wallet_data()
     if not wallet_data:
         return render_template('error.html', 
@@ -157,14 +154,13 @@ def index():
 
 @app.route('/new_address', methods=['POST'])
 def new_address():
-    """Create a new subaddress and redirect to main page"""
+    """Generate a new subaddress"""
     wallet = get_wallet()
     if not wallet:
         flash('Could not connect to wallet', 'error')
         return redirect(url_for('index'))
     
     try:
-        # Create new subaddress
         new_addr, index = wallet.new_address()
         flash(f'New address generated successfully! Index: {index}', 'success')
     except Exception as e:
@@ -175,7 +171,7 @@ def new_address():
 
 @app.route('/send_transaction', methods=['POST'])
 def send_transaction():
-    """Send a transaction to specified address and redirect to main page"""
+    """Send Monero transaction to specified address"""
     wallet = get_wallet()
     if not wallet:
         flash('Could not connect to wallet', 'error')
@@ -198,17 +194,16 @@ def send_transaction():
             flash('Invalid amount format', 'error')
             return redirect(url_for('index'))
         
-        # Check if wallet has sufficient unlocked balance
+        # Verify sufficient unlocked balance
         _, unlocked_balance = wallet.balances()
         if amount > float(unlocked_balance):
             flash(f'Insufficient unlocked balance. Available: {unlocked_balance} XMR', 'error')
             return redirect(url_for('index'))
         
-        # Send the transaction
+        # Execute transaction
         txs = wallet.transfer(to_address, amount)
         
         if txs:
-            # Get the first transaction (usually there's only one)
             tx = txs[0]
             flash(f'Transaction sent successfully! TX: {tx.hash} Fee: {tx.fee} XMR', 'success')
         else:
@@ -220,10 +215,10 @@ def send_transaction():
     
     return redirect(url_for('index'))
 
-# Keep JSON API endpoints for potential future use
+# JSON API endpoints
 @app.route('/wallet_info')
 def wallet_info():
-    """Get current wallet information"""
+    """API endpoint: Get wallet information as JSON"""
     wallet_data = get_wallet_data()
     if not wallet_data:
         return jsonify({'success': False, 'error': 'Could not connect to wallet'})
@@ -238,7 +233,7 @@ def wallet_info():
 
 @app.route('/transactions')
 def get_transactions():
-    """Get incoming transactions with confirmation status"""
+    """API endpoint: Get incoming transactions as JSON"""
     wallet_data = get_wallet_data()
     if not wallet_data:
         return jsonify({'success': False, 'error': 'Could not connect to wallet'})
@@ -250,7 +245,7 @@ def get_transactions():
 
 @app.route('/outgoing_transactions')
 def get_outgoing_transactions():
-    """Get outgoing transactions with confirmation status"""
+    """API endpoint: Get outgoing transactions as JSON"""
     wallet_data = get_wallet_data()
     if not wallet_data:
         return jsonify({'success': False, 'error': 'Could not connect to wallet'})

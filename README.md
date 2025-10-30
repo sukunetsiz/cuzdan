@@ -88,6 +88,26 @@ FLASK_DEBUG=True
 
 ---
 
+## Screenshots
+
+<div align="center">
+
+<img src="static/images/1.png" alt="Image 1" width="800"/>
+
+<img src="static/images/2.png" alt="Image 2" width="800"/>
+
+<img src="static/images/3.png" alt="Image 3" width="800"/>
+
+<img src="static/images/4.png" alt="Image 4" width="800"/>
+
+<img src="static/images/5.png" alt="Image 5" width="800"/>
+
+<img src="static/images/6.png" alt="Image 6" width="800"/>
+
+</div>
+
+---
+
 ## QR Code Features
 
 ### Receiving Payments

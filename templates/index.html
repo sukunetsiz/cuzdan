@@ -9,14 +9,14 @@
     <script src="{{ url_for('static', filename='js/html5-qrcode.min.js') }}"></script>
 </head>
 <body class="bg-gray-900 text-gray-100">
-    <!-- Top anchor for scroll-to-top functionality -->
+    <!-- Top scroll anchor -->
     <div id="top"></div>
     
-    <!-- Scroll buttons on the left side -->
+    <!-- Left side scroll buttons -->
     <a href="#top" class="fixed top-1/2 left-5 transform -translate-y-1/2 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to top">▲</a>
     <a href="#bottom" class="fixed top-1/2 left-5 transform translate-y-12 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to bottom">▼</a>
     
-    <!-- Scroll buttons on the right side -->
+    <!-- Right side scroll buttons -->
     <a href="#top" class="fixed top-1/2 right-5 transform -translate-y-1/2 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to top">▲</a>
     <a href="#bottom" class="fixed top-1/2 right-5 transform translate-y-12 w-10 h-10 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-full flex items-center justify-center text-gray-300 text-xl no-underline transition-colors z-10" title="Scroll to bottom">▼</a>
 
@@ -66,7 +66,7 @@
                     </div>
                 </div>
                 
-                <!-- Unlocked Balance -->
+                <!-- Unlocked Balance Section -->
                 <div class="bg-gray-700 rounded p-4 border border-gray-600">
                     <div class="flex justify-between items-center">
                         <div>
@@ -103,7 +103,7 @@
                 </a>
             </div>
 
-            <!-- Send Transaction -->
+            <!-- Send Transaction Form -->
             <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
                 <h2 class="text-xl font-medium text-gray-300 mb-4 text-center">Send Transaction</h2>
                 <form action="{{ url_for('send_transaction') }}" method="POST">
@@ -251,7 +251,7 @@
         </div>
     </div>
     
-    <!-- Bottom anchor for scroll-to-bottom functionality -->
+    <!-- Bottom scroll anchor -->
     <div id="bottom"></div>
     
     <script>
@@ -276,7 +276,7 @@
             document.execCommand('copy');
             document.body.removeChild(textarea);
             
-            // Show a temporary message
+            // Show temporary success feedback
             const button = event.target;
             const originalText = button.textContent;
             button.textContent = 'Copied!';
@@ -306,7 +306,6 @@
                             qrbox: { width: 250, height: 250 }
                         },
                         (decodedText, decodedResult) => {
-                            // QR code scanned successfully
                             handleQRCodeScan(decodedText);
                         },
                         (errorMessage) => {
@@ -338,34 +337,27 @@
         
         function handleQRCodeScan(decodedText) {
             try {
-                console.log('QR Code scanned:', decodedText); // Debug log
+                console.log('QR Code scanned:', decodedText);
                 
-                // Parse Monero URI format
+                // Parse Monero URI format (monero:address?amount=X)
                 let address = decodedText;
                 let amount = '';
                 
                 if (decodedText.startsWith('monero:')) {
-                    // Handle various Monero URI formats
-                    // Format examples:
-                    // monero:address?amount=0.123
-                    // monero:address?tx_amount=0.123
-                    // monero:address?tx_amount=0.123&payment_id=xyz
-                    
                     try {
                         const url = new URL(decodedText);
                         address = url.pathname;
                         
-                        // Try different parameter names for amount
+                        // Check for amount in various parameter formats
                         amount = url.searchParams.get('amount') || 
                                 url.searchParams.get('tx_amount') || 
                                 url.searchParams.get('tx_amount') || '';
                         
-                        console.log('Parsed address:', address); // Debug log
-                        console.log('Parsed amount:', amount); // Debug log
+                        console.log('Parsed address:', address);
+                        console.log('Parsed amount:', amount);
                     } catch (urlError) {
                         // Fallback for malformed URLs
                         console.error('URL parsing error:', urlError);
-                        // Try manual parsing
                         const parts = decodedText.split('?');
                         if (parts.length > 1) {
                             address = parts[0].replace('monero:', '');
@@ -378,17 +370,14 @@
                     }
                 }
                 
-                // Fill the form fields
+                // Populate form fields
                 document.getElementById('recipient-address').value = address;
                 if (amount && amount !== '') {
                     document.getElementById('send-amount').value = amount;
-                    console.log('Amount field set to:', amount); // Debug log
+                    console.log('Amount field set to:', amount);
                 }
                 
-                // Close the scanner
                 closeQRScanner();
-                
-                // Show success message
                 showFlashMessage('QR code scanned successfully!', 'success');
                 
             } catch (error) {
