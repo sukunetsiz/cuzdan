@@ -4,6 +4,9 @@ from monero.backends.jsonrpc import JSONRPCWallet
 import logging
 import os
 from dotenv import load_dotenv
+import qrcode
+import io
+import base64
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,6 +35,27 @@ def get_wallet():
         app.logger.error(f"Failed to connect to wallet: {e}")
         return None
 
+def generate_qr_code(address):
+    """Generate a QR code for the given address and return it as base64"""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(address)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="white", back_color="black")
+    
+    # Convert image to base64 string
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    img_base64 = base64.b64encode(img_io.getvalue()).decode()
+    
+    return img_base64
+
 def get_wallet_data():
     """Get all wallet data for rendering"""
     wallet = get_wallet()
@@ -45,8 +69,14 @@ def get_wallet_data():
         # Get all addresses in the first account
         addresses = wallet.addresses()
         
-        # Get wallet balance
-        balance = wallet.balance()
+        # Get the latest subaddress (last in the list)
+        latest_address = addresses[-1] if addresses else primary_address
+        
+        # Generate QR code for the latest address
+        latest_address_qr = generate_qr_code(str(latest_address))
+        
+        # Get wallet balances (both total and unlocked)
+        total_balance, unlocked_balance = wallet.balances()
         
         # Get incoming transactions
         incoming = wallet.incoming(unconfirmed=True)
@@ -104,7 +134,10 @@ def get_wallet_data():
         return {
             'primary_address': str(primary_address),
             'all_addresses': [str(addr) for addr in addresses],
-            'balance': str(balance),
+            'latest_address': str(latest_address),
+            'latest_address_qr': latest_address_qr,
+            'balance': str(total_balance),
+            'unlocked_balance': str(unlocked_balance),
             'incoming_transactions': incoming_transactions,
             'outgoing_transactions': outgoing_transactions
         }
@@ -165,10 +198,10 @@ def send_transaction():
             flash('Invalid amount format', 'error')
             return redirect(url_for('index'))
         
-        # Check if wallet has sufficient balance
-        balance = wallet.balance()
-        if amount > float(balance):
-            flash(f'Insufficient balance. Available: {balance} XMR', 'error')
+        # Check if wallet has sufficient unlocked balance
+        _, unlocked_balance = wallet.balances()
+        if amount > float(unlocked_balance):
+            flash(f'Insufficient unlocked balance. Available: {unlocked_balance} XMR', 'error')
             return redirect(url_for('index'))
         
         # Send the transaction
@@ -199,6 +232,7 @@ def wallet_info():
         'success': True,
         'addresses': wallet_data['all_addresses'],
         'balance': wallet_data['balance'],
+        'unlocked_balance': wallet_data['unlocked_balance'],
         'address_count': len(wallet_data['all_addresses'])
     })
 
